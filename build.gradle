@@ -26,6 +26,16 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'com.h2database:h2'
 
+    /**
+     * [Code Review #10]
+     * 문제: Lombok 의존성 선언 형식이 일관되지 않음
+     * 원인: 다른 의존성 코드와 비교하여 해당 두줄의 코드 컨벤션이 일관되지 않음.
+     * 개선안: 코드 컨벤션 유지 - 모든 의존성 선언 형식을 통일
+     *   1) compileOnly 'org.projectlombok:lombok:${lombokVersion}'
+     *   2) 트레이드오프: 형식을 통일하면 코드 가독성과 유지보수성 향상.
+     * 검증:
+     *   1) 프로젝트 전체 의존성 선언 형식 통일 확인
+     */
     // Lombok
     compileOnly    "org.projectlombok:lombok:${lombokVersion}"
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
