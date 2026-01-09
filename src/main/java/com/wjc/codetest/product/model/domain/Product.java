@@ -7,14 +7,23 @@ import lombok.Setter;
 /**
  * [Code Review #1]
  * 문제: @Setter 사용으로 인한 캡슐화 위반 및 @Getter 중복
- * 원인: @Setter는 모든 필드에 setter를 자동 생성하여 불변성 보장 불가, 수동 Getter 메서드 중복 정의
+ * 원인:
+ *   1) @Setter는 모든 필드에 setter를 자동 생성하여 불변성 보장 불가
+ *   2) 수동 Getter 메서드 중복 정의
  * 개선안:
- *   1) @Setter 제거 후 changeCategory(), changeName() 같은 비즈니스 메서드로 변경
+ *   1) @Setter 제거 후 update(String category, String name) 비즈니스 메서드 추가
+ *     - public void update(String category, String name) { this.category = category; this.name = name; }
+ *     - Service의 update 메서드에서 product.update(dto.getCategory(), dto.getName()) 형태로 사용
  *   2) 수동 Getter 메서드 삭제
- *   3) 코드량은 증가하지만 도메인 로직이 명확해짐
+ *   3) 트레이드오프: 코드량은 증가하지만, 도메인 로직이 명확해지고 캡슐화 강화
+ *   4) 선택: @Setter 제거 + 비즈니스 메서드 추가
+ *     - 선택 근거:
+ *       a) 도메인 로직이 Entity에 집중되어 응집도 향상
+ *       b) 무분별한 필드 변경 방지
  * 검증:
  *   1) @Setter 제거 후 컴파일 오류 확인
  *   2) 비즈니스 메서드로만 변경 가능한지 확인
+ *   3) Service 레이어에서 update() 메서드 호출 확인
  */
 @Entity
 @Getter

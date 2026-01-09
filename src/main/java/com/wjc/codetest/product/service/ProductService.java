@@ -121,39 +121,47 @@ public class ProductService {
     /**
      * [Code Review #18]
      * 문제:
-     *   1) 불필요한 save() 호출 (Dirty Checking 미활용)
-     *   2) DTO에 id 포함 (Controller에서 Path Variable로 받아야 함)
-     *   3) Service 레이어에 @Transactional 미적용
-     *   4) 권한 체크 로직 부재
-     *   5) Entity 직접 반환
+     *   1) product.setCategory(), product.setName() 사용으로 캡슐화 위반
+     *   2) 불필요한 save() 호출 (Dirty Checking 미활용)
+     *   3) DTO에 id 포함 -> Path Variable로 받아야 함
+     *   4) Service 레이어에 @Transactional 미적용
+     *   5) 권한 체크 로직 부재
+     *   6) Entity 직접 반환
      * 원인:
-     *   1) JPA Dirty Checking은 트랜잭션 커밋 시 자동으로 UPDATE 쿼리 실행하므로 save() 불필요
-     *   2) Restful API에서는 리소스 ID를 URL Path Variable로 받는 것이 표준
-     *   3) 현재는 save() 호출로 동작하지만, save() 제거 시 Service 레벨 트랜잭션 없으면 Dirty Checking 미동작
-     *   4) 인증된 사용자라도 타인의 상품 수정 가능
-     *   5) Entity 직접 반환 시 API 스펙이 도메인 모델에 종속됨
+     *   1) setter 직접 호출 시 도메인 로직이 Service에 분산되어 응집도 저하
+     *   2) JPA Dirty Checking은 트랜잭션 커밋 시 자동으로 UPDATE 쿼리 실행하므로 save() 불필요
+     *   3) Rest API에서는 리소스 ID를 Path Variable로 받는 것이 표준
+     *   4) 현재는 save() 호출로 동작하지만, save() 제거 시 Service 레벨 트랜잭션 없으면 Dirty Checking 미동작
+     *   5) 인증된 사용자라도 타인의 상품 수정 가능
+     *   6) Entity 직접 반환 시 API 스펙이 도메인 모델에 종속됨
      * 개선안:
-     *   1) save() 제거 -> Dirty Checking 활용
-     *   2) 메서드 시그니처 변경: update(Long id, UpdateProductRequest dto)
-     *   3) @Transactional 추가 -> Dirty Checking 활성화 및 로직 확장 시 원자성 보장
-     *   4) 권한 체크 로직 추가: 상품 소유자만 수정 가능하도록 검증
-     *   5) ProductResponse DTO로 변환하여 반환
-     *   6) 트레이드오프:
+     *   1) Product 엔티티에 update(String category, String name) 비즈니스 메서드 추가
+     *     - 변경 전: product.setCategory(dto.getCategory()); product.setName(dto.getName());
+     *     - 변경 후: product.update(dto.getCategory(), dto.getName());
+     *   2) save() 제거 -> Dirty Checking 활용
+     *   3) 메서드 시그니처 변경: update(Long id, UpdateProductRequest dto)
+     *   4) @Transactional 추가 -> Dirty Checking 활성화 및 로직 확장 시 원자성 보장
+     *   5) 권한 체크 로직 추가: 상품 소유자만 수정 가능하도록 검증
+     *   6) ProductResponse DTO로 변환하여 반환
+     *   7) 트레이드오프:
+     *     - Entity에 메서드 추가 필요하지만, 도메인 로직 응집도 향상
      *     - Dirty Checking: save() 제거로 코드 간결하지만, @Transactional 필수
      *     - 권한 체크: 검증 로직 추가 필요하지만, 보안 강화
      *     - DTO 변환: 변환 로직 추가 필요하지만, API 스펙과 도메인 모델 독립성 확보
-     *   7) 선택: Dirty Checking + @Transactional + 권한 체크 + DTO 반환
+     *   8) 선택: 비즈니스 메서드 + Dirty Checking + @Transactional + 권한 체크 + DTO 반환
      *     - 선택 근거:
-     *       a) Dirty Checking으로 불필요한 save() 제거
-     *       b) 권한 체크로 보안 강화
-     *       c) DTO 사용으로 API 스펙 안정성 확보
+     *       a) 비즈니스 메서드로 도메인 로직 Entity에 집중
+     *       b) Dirty Checking으로 불필요한 save() 제거
+     *       c) 권한 체크로 보안 강화
+     *       d) DTO 사용으로 API 스펙 안정성 확보
      * 검증:
-     *   1) save() 제거 후 UPDATE 쿼리 정상 실행 확인
-     *   2) 쿼리 로그에서 UPDATE 쿼리 발생 시점 확인
-     *   3) Dirty Checking 동작 확인
-     *   4) 권한 없는 사용자 수정 시도 시 403 Forbidden 반환 확인
-     *   5) 트랜잭션 범위 내에서만 변경사항 반영 확인
-     *   6) ProductResponse DTO 반환 확인
+     *   1) Product.update() 메서드 추가 후 정상 동작 확인
+     *   2) save() 제거 후 UPDATE 쿼리 정상 실행 확인
+     *   3) 쿼리 로그에서 UPDATE 쿼리 발생 시점 확인 (트랜잭션 커밋 시)
+     *   4) Dirty Checking 동작 확인
+     *   5) 권한 없는 사용자 수정 시도 시 403 Forbidden 반환 확인
+     *   6) 트랜잭션 범위 내에서만 변경사항 반영 확인
+     *   7) ProductResponse DTO 반환 확인
      */
     public Product update(UpdateProductRequest dto) {
         Product product = getProductById(dto.getId());
